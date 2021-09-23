@@ -1,0 +1,43 @@
+service: uid2-api-wrapper
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.7
+  region: ap-northeast-1
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  environment:
+    endpoint: ${file(config.${self:provider.stage}.json):endpoint}
+    version: ${file(config.${self:provider.stage}.json):version}
+    authorization_token: ${file(config.${self:provider.stage}.json):authorization_token}
+    secret_name: ${file(config.${self:provider.stage}.json):secret_name}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource:
+        - "*"
+
+plugins:
+  - serverless-python-requirements
+functions:
+  token-generate:
+    handler: handler.token_generate
+    events:
+      - http:
+          method: get
+          path: /token/generate
+  token-refresh:
+    handler: handler.token_refreshzzzzzzz
+    events:
+      - http:
+          method: get
+          path: /token/refresh
+  identity-map:
+    handler: handler.get_identity_map
+    events:
+      - http:
+          method: get
+          path: /identity/map
+

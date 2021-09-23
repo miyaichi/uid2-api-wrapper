@@ -1,0 +1,5 @@
+{
+    "endpoint": "https://prod.uidapi.com",
+    "version": "v1",
+    "secret_name": "uid2/stg"
+}
