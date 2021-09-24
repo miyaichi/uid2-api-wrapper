@@ -34,6 +34,27 @@ __uid2.refresh();
 __uid2.disconnect();
 ```
 
+## Configuration
+設定はconfig.[stage].jsonに記載します。また、AWS Lambdaの環境変数設定で値を変更することができます。
+
+```
+{
+    "region": "ap-northeast-1",
+    "endpoint": "https://integ.uidapi.com",
+    "version": "v1",
+    "secret_name": "uid2-secrets",
+    "ip_white_list": ""
+}
+```
+
+| Name          | Description                                                      |
+| ------------- | ---------------------------------------------------------------- |
+| region        | デプロイするAWS Resion                                              |
+| endpoint      | Unified ID 2.0のEndpoint                                         |
+| version       | Unified ID 2.0のVersion                                          |
+| secret_name   | AWS Security Managerに登録したシークレット名                           |
+| ip_white_list | アクセスを許可するIPアドレスリスト（カンマ区切り、空白なしで複数記述することができます） |
+
 ## Deploy
 
 * install serverless framework
