@@ -1,32 +1,6 @@
 class UID2 {
     constructor() {
         this.base_url = "{{ base_url }}";
-        this.init = (opts) => {
-            console.log("<init 1>");
-            const identity = opts["identity"];
-            if (identity) {
-                console.log("<init 2>");
-                this.setIdentity(identity);
-            }
-            else {
-                console.log("<init 3>");
-                this.refreshIfNeeded();
-            }
-        };
-        this.refreshIfNeeded = () => {
-            const identity = this.getIdentity();
-            if (identity) {
-                const url = this.base_url + "/token/refresh?refresh_token=" + encodeURIComponent(identity["refresh_token"]);
-                const req = new XMLHttpRequest();
-                req.overrideMimeType("application/json");
-                var cb = this.handleResponse;
-                req.open("GET", url, false);
-                req.onload = function () {
-                    cb(req.responseText);
-                };
-                req.send();
-            }
-        };
         this.handleResponse = (resp) => {
             this.setIdentity(JSON.parse(resp)["body"]);
         };
@@ -34,7 +8,7 @@ class UID2 {
         this.getIdentity = () => {
             const payload = this.getCookie("__uid_2");
             if (payload) {
-                return JSON.parse(payload);
+               s return JSON.parse(payload);
             }
         };
         this.getAdvertisingToken = () => {
@@ -75,7 +49,6 @@ class UID2 {
             document.cookie = name + "=;path=/;expires=Tue, 1 Jan 1980 23:59:59 GMT";
         };
         
-        
         this.connect = (email) => {
             const url = this.base_url + "/token/generate?email=" + encodeURIComponent(email);
             const req = new XMLHttpRequest();
@@ -87,7 +60,6 @@ class UID2 {
             };
             req.send();
         };
-
         this.refresh = () => {
             const identity = this.getIdentity();
             if (identity) {
@@ -102,7 +74,6 @@ class UID2 {
                 req.send();
             }
         };
-
         this.disconnect = () => {
             this.removeCookie("__uid_2");
         };
