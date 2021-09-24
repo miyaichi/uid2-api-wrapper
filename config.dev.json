@@ -1,5 +1,7 @@
 {
+    "region": "ap-northeast-1",
     "endpoint": "https://integ.uidapi.com",
     "version": "v1",
-    "secret_name": "uid2/dev"
+    "secret_name": "uid2-secrets",
+    "ip_white_list": ""
 }

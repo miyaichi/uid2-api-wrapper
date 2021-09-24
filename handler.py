@@ -4,20 +4,49 @@ import logging
 import os
 import requests
 import urllib.parse
+from jinja2 import Environment, FileSystemLoader
 
-session = boto3.session.Session()
-client = session.client(service_name='secretsmanager',
-                        region_name="ap-northeast-1")
-response = client.get_secret_value(SecretId=os.environ["secret_name"])
-secret = json.loads(response['SecretString'])
 
-AUTHORIZATION_TOKEN = secret['AUTHORIZATION_TOKEN']
-ENDPOINT = os.environ["endpoint"]
-VERSION = os.environ["version"]
+def get_secrets(secret_name):
+    session = boto3.session.Session()
+    client = session.client(service_name="secretsmanager",
+                            region_name=os.environ["AWS_REGION"])
+    response = client.get_secret_value(SecretId=os.environ["secret_name"])
+    return json.loads(response["SecretString"])
+
+
+def normalize_email(email):
+    """
+    Normalized the email address.
+
+    Parameters
+    ----------
+    email: str
+        email address.
+
+    Returns
+    -------
+    email : str
+        Normalized email address.
+    """
+    email = email.strip().lower()
+    (user, domain) = email.split("@")
+    if domain == "gmail.com":
+        user = user.replace(",", "").split("+")[0]
+        email = "@".join((user, domain))
+    return email
 
 
 def handler_wrapper(func):
     def decorate(event, context):
+        if os.environ["ip_white_list"]:
+            ip_white_list = [
+                x.strip() for x in str(os.environ["ip_white_list"]).split(',')
+            ]
+            if event["requestContext"]["identity"][
+                    "sourceIp"] not in ip_white_list:
+                return {'status': '403', 'statusDescription': 'Forbidden'}
+
         try:
             log = logging.getLogger()
             log.setLevel(logging.DEBUG)
@@ -33,122 +62,107 @@ def handler_wrapper(func):
     return decorate
 
 
-def normalize_email(email):
-    """
-    メールアドレスを正規化する。
+@handler_wrapper
+def uid2_sdk(event, context):
+    env = Environment(loader=FileSystemLoader("./templates"), trim_blocks=True)
+    template = env.get_template("uid2-sdk.tpl.js")
+    base_url = "https://{}/{}".format(event["requestContext"]["domainName"],
+                                      event["requestContext"]["stage"])
 
-    Parameters
-    ----------
-    email: str
-        メールアドレス。
-
-    Returns
-    -------
-    email : str
-        正規化したメールアドレス。
-    """
-    email = email.strip().lower()
-    (user, domain) = email.split("@")
-    if domain == "gmail.com":
-        user = user.replace(",", "").split("+")[0]
-        email = "@".join((user, domain))
-    return email
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "text/javascript;charset=UTF-8"
+        },
+        "body": template.render({"base_url": base_url})
+    }
 
 
 @handler_wrapper
 def token_generate(event, context):
-    email = email_hash = None
+    secrets = get_secrets(os.environ["secret_name"])
+    params = {}
     if event["queryStringParameters"] is not None:
-        params = event["queryStringParameters"]
-        if "email" in params:
-            email = params["email"]
-        if "email_hash" in params:
-            email_hash = params["email_hash"]
+        queryString = event["queryStringParameters"]
+        if "email" in queryString:
+            params["email"] = normalize_email(queryString["email"])
+        if "email_hash" in queryString:
+            params["email_hash"] = urllib.parse.quote(
+                queryString["email_hash"])
 
-    url = "{}/{}/{}".format(ENDPOINT, VERSION, "token/generate")
-    headers = {"Authorization": "Bearer {}".format(AUTHORIZATION_TOKEN)}
-    if email:
-        params = "email={}".format(normalize_email(email))
-    else:
-        params = "email_hash={}".format(urllib.parse.quote(email_hash))
+    response = requests.get(
+        "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
+                          "token/generate"),
+        headers={
+            "Authorization": "Bearer {}".format(secrets["AUTHORIZATION_TOKEN"])
+        },
+        params="&".join("%s=%s" % (k, v) for k, v in params.items()))
 
-    body = status = None
-    response = requests.get(url, params=params, headers=headers)
-    if response.status_code == 200:
-        if "body" in response.json():
-            body = response.json()["body"]
-        if "status" in response.json():
-            status = response.json()["status"]
-
-    response = {
+    return {
         "statusCode": response.status_code,
-        "body": json.dumps({
-            "body": body,
-            "status": status
-        })
+        "headers": {
+            "Access-Control-Allow-Headers": 'Content-Type',
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET"
+        },
+        "body": response.text
     }
 
-    return response
 
+@handler_wrapper
 def token_refresh(event, context):
-    refresh_token = None
+    secrets = get_secrets(os.environ["secret_name"])
+    params = {}
     if event["queryStringParameters"] is not None:
-        params = event["queryStringParameters"]
-        if "refresh_token" in params:
-            refresh_token = params["refresh_token"]
+        queryString = event["queryStringParameters"]
+        if "refresh_token" in queryString:
+            params["refresh_token"] = queryString["refresh_token"]
 
-    url = "{}/{}/{}".format(ENDPOINT, VERSION, "token/refresh")
-    headers = {"Authorization": "Bearer {}".format(AUTHORIZATION_TOKEN)}
-    params = {"refresh_token": refresh_token}
+    response = requests.get(
+        "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
+                          "token/refresh"),
+        headers={
+            "Authorization": "Bearer {}".format(secrets["AUTHORIZATION_TOKEN"])
+        },
+        params=params)
 
-    body = status = None
-    response = requests.get(url, params=params, headers=headers)
-    if response.status_code == 200:
-        if "body" in response.json():
-            body = response.json()["body"]
-        if "status" in response.json():
-            status = response.json()["status"]
-
-    response = {
+    return {
         "statusCode": response.status_code,
-        "body": json.dumps({
-            "body": body,
-            "status": status
-        })
+        "headers": {
+            "Access-Control-Allow-Headers": 'Content-Type',
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET"
+        },
+        "body": response.text
     }
 
-    return response
 
+@handler_wrapper
 def get_identity_map(event, context):
-    email = email_hash = None
+    secrets = get_secrets(os.environ["secret_name"])
+    params = {}
     if event["queryStringParameters"] is not None:
-        params = event["queryStringParameters"]
-        if "email" in params:
-            email = params["email"]
-        if "email_hash" in params:
-            email_hash = params["email_hash"]
+        queryString = event["queryStringParameters"]
+        if "email" in queryString:
+            params["email"] = normalize_email(queryString["email"])
+        if "email_hash" in queryString:
+            params["email_hash"] = urllib.parse.quote(
+                queryString["email_hash"])
 
-    url = "{}/{}/{}".format(ENDPOINT, VERSION, "token/generate")
-    headers = {"Authorization": "Bearer {}".format(AUTHORIZATION_TOKEN)}
-    if email:
-        params = "email={}".format(normalize_email(email))
-    else:
-        params = "email_hash={}".format(urllib.parse.quote(email_hash))
+    response = requests.get(
+        "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
+                          "token/generate"),
+        headers={
+            "Authorization": "Bearer {}".format(secrets["AUTHORIZATION_TOKEN"])
+        },
+        params="&".join("%s=%s" % (k, v) for k, v in params.items()))
 
-    body = status = None
-    response = requests.get(url, params=params, headers=headers)
-    if response.status_code == 200:
-        if "body" in response.json():
-            body = response.json()["body"]
-        if "status" in response.json():
-            status = response.json()["status"]
-
-    response = {
+    return {
         "statusCode": response.status_code,
-        "body": json.dumps({
-            "body": body,
-            "status": status
-        })
+        "headers": {
+            "Access-Control-Allow-Headers": 'Content-Type',
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET"
+        },
+        "body": response.text
     }
-
-    return response

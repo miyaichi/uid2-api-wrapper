@@ -20,6 +20,12 @@ $ cd <this clone directory>
 $ npm install --save serverless-python-requirements
 ```
 
+* modify config.[stage].json, serverless.yaml
+```console
+$ vim congig.[stage].json
+$ vim serverless.yaml
+```
+
 * deploy it
 ```console
 $ serverless deploy [--stage production]
