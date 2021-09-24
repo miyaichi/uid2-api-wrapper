@@ -8,7 +8,7 @@ class UID2 {
         this.getIdentity = () => {
             const payload = this.getCookie("__uid_2");
             if (payload) {
-               s return JSON.parse(payload);
+               return JSON.parse(payload);
             }
         };
         this.getAdvertisingToken = () => {
