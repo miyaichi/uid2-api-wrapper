@@ -21,7 +21,6 @@ provider:
 
 plugins:
   - serverless-python-requirements
-
 functions:
   uid2-sdk:
     handler: handler.uid2_sdk

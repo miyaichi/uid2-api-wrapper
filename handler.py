@@ -32,7 +32,7 @@ def normalize_email(email):
     email = email.strip().lower()
     (user, domain) = email.split("@")
     if domain == "gmail.com":
-        user = user.replace(",", "").split("+")[0]
+        user = user.replace(".", "").split("+")[0]
         email = "@".join((user, domain))
     return email
 
@@ -87,8 +87,7 @@ def token_generate(event, context):
         if "email" in queryString:
             params["email"] = normalize_email(queryString["email"])
         if "email_hash" in queryString:
-            params["email_hash"] = urllib.parse.quote(
-                queryString["email_hash"])
+            params["email_hash"] = queryString["email_hash"]
 
     response = requests.get(
         "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
@@ -146,8 +145,7 @@ def get_identity_map(event, context):
         if "email" in queryString:
             params["email"] = normalize_email(queryString["email"])
         if "email_hash" in queryString:
-            params["email_hash"] = urllib.parse.quote(
-                queryString["email_hash"])
+            params["email_hash"] = queryString["email_hash"]
 
     response = requests.get(
         "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
