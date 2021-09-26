@@ -35,9 +35,3 @@ functions:
       - http:
           method: get
           path: /token/generate
-  token-refresh:
-    handler: handler.token_refresh
-    events:
-      - http:
-          method: get
-          path: /token/refresh

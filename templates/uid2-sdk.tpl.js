@@ -94,7 +94,7 @@ class UID2 {
         this.refreshIfNeeded = () => {
             const refresh_token = this.getRefreshToken();
             if (refresh_token) {
-                const url = "{{ base_url }}/token/refresh?refresh_token=" + encodeURIComponent(refresh_token);
+                const url = "{{ uid2_url }}/token/refresh?refresh_token=" + encodeURIComponent(refresh_token);
                 const req = new XMLHttpRequest();
                 req.overrideMimeType("application/json");
                 var cb = this.handleResponse;

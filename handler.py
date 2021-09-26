@@ -1,9 +1,10 @@
+import base64
 import boto3
+import hashlib
 import json
 import logging
 import os
 import requests
-import urllib.parse
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -24,16 +25,12 @@ def normalize_email(email):
     return email
 
 
+def base64_encoded_sha256(str):
+    return base64.b64encode(hashlib.sha256(str.encode()).digest()).decode()
+
+
 def handler_wrapper(func):
     def decorate(event, context):
-        if os.environ["ip_white_list"]:
-            ip_white_list = [
-                x.strip() for x in str(os.environ["ip_white_list"]).split(",")
-            ]
-            if event["requestContext"]["identity"][
-                    "sourceIp"] not in ip_white_list:
-                return {"status": "403", "statusDescription": "Forbidden"}
-
         try:
             log = logging.getLogger()
             log.setLevel(logging.DEBUG)
@@ -55,18 +52,29 @@ def uid2_sdk(event, context):
     template = env.get_template("uid2-sdk.tpl.js")
     base_url = "https://{}/{}".format(event["requestContext"]["domainName"],
                                       event["requestContext"]["stage"])
+    uid2_url = "{}/{}".format(os.environ["endpoint"], os.environ["version"])
 
     return {
         "statusCode": 200,
         "headers": {
             "Content-Type": "text/javascript;charset=UTF-8"
         },
-        "body": template.render({"base_url": base_url})
+        "body": template.render({
+            "base_url": base_url,
+            "uid2_url": uid2_url
+        })
     }
 
 
 @handler_wrapper
 def token_generate(event, context):
+    if os.environ["ip_white_list"]:
+        ip_white_list = [
+            x.strip() for x in str(os.environ["ip_white_list"]).split(",")
+        ]
+        if event["requestContext"]["identity"][
+                "sourceIp"] not in ip_white_list:
+            return {"status": "403", "statusDescription": "Forbidden"}
     secrets = get_secrets(os.environ["secret_name"])
     params = {}
     if event["queryStringParameters"] is not None:
@@ -83,30 +91,6 @@ def token_generate(event, context):
             "Authorization": "Bearer {}".format(secrets["AUTHORIZATION_TOKEN"])
         },
         params="&".join("%s=%s" % (k, v) for k, v in params.items()))
-
-    return {
-        "statusCode": response.status_code,
-        "headers": {
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET"
-        },
-        "body": response.text
-    }
-
-
-@handler_wrapper
-def token_refresh(event, context):
-    params = {}
-    if event["queryStringParameters"] is not None:
-        queryString = event["queryStringParameters"]
-        if "refresh_token" in queryString:
-            params["refresh_token"] = queryString["refresh_token"]
-
-    response = requests.get("{}/{}/{}".format(os.environ["endpoint"],
-                                              os.environ["version"],
-                                              "token/refresh"),
-                            params=params)
 
     return {
         "statusCode": response.status_code,
