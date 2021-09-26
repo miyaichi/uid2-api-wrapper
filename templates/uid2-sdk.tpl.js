@@ -1,10 +1,13 @@
 class UID2 {
     constructor() {
-        this.base_url = "{{ base_url }}";
-        this.handleResponse = (resp) => {
-            this.setIdentity(JSON.parse(resp)["body"]);
+        this.init = (identity) => {
+            if (identity) {
+                this.setIdentity(identity);
+            }
+            else {
+                this.refreshIfNeeded();
+            }
         };
-        
         this.getIdentity = () => {
             const payload = this.getCookie("__uid_2");
             if (payload) {
@@ -13,10 +16,17 @@ class UID2 {
         };
         this.getAdvertisingToken = () => {
             const identity = this.getIdentity();
-            if (identity) {
-                return identity["advertising_token"];
+            if (identity && "body" in identity) {
+                return identity["body"]["advertising_token"];
             }
         };
+        this.getRefreshToken = () => {
+            const identity = this.getIdentity();
+            if (identity && "body" in identity) {
+                return identity["body"]["refresh_token"];
+            }
+        };
+        
         this.setIdentity = (value) => {
             var payload;
             if (typeof (value) === "object") {
@@ -64,10 +74,14 @@ class UID2 {
             const digest = await window.crypto.subtle.digest("SHA-256", buffer);
             return window.btoa(String.fromCharCode(...new Uint8Array(digest)));
         };
+        this.handleResponse = (resp) => {
+            this.setIdentity(resp);
+        };
 
         this.connect = (email) => {
             this.base64_encoded_sha256(this.normalize_email(email)).then(email_hash => {
-                const url = this.base_url + "/token/generate?email_hash=" + encodeURIComponent(email_hash);
+                console.log("hash:" + email_hash);
+                const url = "{{ base_url }}/token/generate?email_hash=" + encodeURIComponent(email_hash);
                 const req = new XMLHttpRequest();
                 req.overrideMimeType("application/json");
                 var cb = this.handleResponse;
@@ -78,10 +92,10 @@ class UID2 {
                 req.send();
             });
         };
-        this.refresh = () => {
-            const identity = this.getIdentity();
-            if (identity) {
-                const url = this.base_url + "/token/refresh?refresh_token=" + encodeURIComponent(identity["refresh_token"]);
+        this.refreshIfNeeded = () => {
+            const refresh_token = this.getRefreshToken();
+            if (refresh_token) {
+                const url = "{{ base_url }}/token/refresh?refresh_token=" + encodeURIComponent(refresh_token);
                 const req = new XMLHttpRequest();
                 req.overrideMimeType("application/json");
                 var cb = this.handleResponse;

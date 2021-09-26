@@ -21,6 +21,7 @@ provider:
 
 plugins:
   - serverless-python-requirements
+
 functions:
   uid2-sdk:
     handler: handler.uid2_sdk
@@ -40,10 +41,3 @@ functions:
       - http:
           method: get
           path: /token/refresh
-  identity-map:
-    handler: handler.get_identity_map
-    events:
-      - http:
-          method: get
-          path: /identity/map
-

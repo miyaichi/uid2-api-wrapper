@@ -11,24 +11,11 @@ def get_secrets(secret_name):
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager",
                             region_name=os.environ["AWS_REGION"])
-    response = client.get_secret_value(SecretId=os.environ["secret_name"])
+    response = client.get_secret_value(SecretId=secret_name)
     return json.loads(response["SecretString"])
 
 
 def normalize_email(email):
-    """
-    Normalized the email address.
-
-    Parameters
-    ----------
-    email: str
-        email address.
-
-    Returns
-    -------
-    email : str
-        Normalized email address.
-    """
     email = email.strip().lower()
     (user, domain) = email.split("@")
     if domain == "gmail.com":
@@ -41,11 +28,11 @@ def handler_wrapper(func):
     def decorate(event, context):
         if os.environ["ip_white_list"]:
             ip_white_list = [
-                x.strip() for x in str(os.environ["ip_white_list"]).split(',')
+                x.strip() for x in str(os.environ["ip_white_list"]).split(",")
             ]
             if event["requestContext"]["identity"][
                     "sourceIp"] not in ip_white_list:
-                return {'status': '403', 'statusDescription': 'Forbidden'}
+                return {"status": "403", "statusDescription": "Forbidden"}
 
         try:
             log = logging.getLogger()
@@ -100,7 +87,7 @@ def token_generate(event, context):
     return {
         "statusCode": response.status_code,
         "headers": {
-            "Access-Control-Allow-Headers": 'Content-Type',
+            "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET"
         },
@@ -110,55 +97,21 @@ def token_generate(event, context):
 
 @handler_wrapper
 def token_refresh(event, context):
-    secrets = get_secrets(os.environ["secret_name"])
     params = {}
     if event["queryStringParameters"] is not None:
         queryString = event["queryStringParameters"]
         if "refresh_token" in queryString:
             params["refresh_token"] = queryString["refresh_token"]
 
-    response = requests.get(
-        "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
-                          "token/refresh"),
-        headers={
-            "Authorization": "Bearer {}".format(secrets["AUTHORIZATION_TOKEN"])
-        },
-        params=params)
+    response = requests.get("{}/{}/{}".format(os.environ["endpoint"],
+                                              os.environ["version"],
+                                              "token/refresh"),
+                            params=params)
 
     return {
         "statusCode": response.status_code,
         "headers": {
-            "Access-Control-Allow-Headers": 'Content-Type',
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET"
-        },
-        "body": response.text
-    }
-
-
-@handler_wrapper
-def get_identity_map(event, context):
-    secrets = get_secrets(os.environ["secret_name"])
-    params = {}
-    if event["queryStringParameters"] is not None:
-        queryString = event["queryStringParameters"]
-        if "email" in queryString:
-            params["email"] = normalize_email(queryString["email"])
-        if "email_hash" in queryString:
-            params["email_hash"] = queryString["email_hash"]
-
-    response = requests.get(
-        "{}/{}/{}".format(os.environ["endpoint"], os.environ["version"],
-                          "token/generate"),
-        headers={
-            "Authorization": "Bearer {}".format(secrets["AUTHORIZATION_TOKEN"])
-        },
-        params="&".join("%s=%s" % (k, v) for k, v in params.items()))
-
-    return {
-        "statusCode": response.status_code,
-        "headers": {
-            "Access-Control-Allow-Headers": 'Content-Type',
+            "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET"
         },

@@ -1,41 +1,44 @@
 # uid2-api-wrapper
 
-Unified ID 2.0 APIをJavascriptから利用するためのWrapper API。
+パブリッシャーがUnified ID 2.0 APIをJavascriptから利用するためのラッパー。
 
-Unified ID 2.0 APIは、Bearer Tokenを使って認証を行うため、セキュリティ上、サーバーサイドでUID2やUID2 Tokenの生成を行う必要があります。
-しかしながら、PoC期間にアプリケーションサーバー側にUnified ID 2.0のサポートを実装することは難しく、PoCの進行を妨げる可能性があります。そこで、Bearer TokenではなくIPアドレスで認証を行うWrapper APIをAWS API Gateway + AWS Lambdaで実装しました。Bearer TokenはAWS Security Managerに安全に保存し、IPアドレス制限である程度のセキュリティを担保することができ、API実装をサポートするJavascriptも併せて提供することで、PoCを効率的に実施することができます。
+Unified ID 2.0 APIは、Bearer Tokenを使って認証を行うため、セキュリティ上、サーバーサイドでUID2 Tokenの生成を行う必要があります。
+しかしながら、PoC期間にアプリケーションサーバー側にUnified ID 2.0のサポートを実装することは難しく、PoCの進行を妨げる可能性があります。
+そこで、Bearer TokenではなくIPアドレスで認証を行うラッパーをAWS API Gateway + AWS Lambdaで実装し、Client Side SKD(Javascript)から呼び出せる様にしました。
+Bearer TokenはAWS Secrets Managerに安全に保存し、IPアドレス制限である程度のセキュリティを担保することができ、API実装をサポートするJavascriptも併せて提供することで、PoCを効率的に実施することができます。
 
-重要: Wrapper APIを利用することで、Unified ID 2.0 APIが本来持つセキュリティレベルとは異なるセキュリティレベルの運用が必要となることを理解してください。テスト環境での利用を推奨します。
+重要: このラッパーを利用することで、Unified ID 2.0 APIが本来持つセキュリティレベルとは異なるセキュリティレベルの運用が必要となることを理解してください。テスト環境での利用を推奨します。
 
 ## Usage
 
-* サポートスクリプトを読み込みます。
-```js script
-<script type="text/javascript" src="[your base url]/uid2_sdk"></script>
+* Client Side SDKを読み込みます。
+```html
+<script src="[your base url]/uid2_sdk" type="text/javascript"></script>
 ```
 
-* ユーザーがログインしたら、ユーザーのメールアドレスからUID2　Tokenを生成し、1st party cookieに保存します。
+* ユーザーがログインしたら、ユーザーのメールアドレスからUID2 Tokenを生成し、1st party cookieに保存します。
 
   <b>Note</b><br>
   connect() 関数に渡されたemailは、SHA256でハッシュしてからUnified ID 2.0 APIに送信しています。
 
-```js script
-__uid2.connect(email);
+```html
+<script>
+  __uid2.connect(email);
+</script>
 ```
 
 * 現在のUID2 Tokenを取得します。
-```js script
-advertisingToken = __uid2.getAdvertisingToken();
-```
-
-* UID2 Tokenをリフレッシュし、1st party cookieを更新します。
-```js script
-__uid2.refresh();
+```html
+<script>
+  advertisingToken = __uid2.getAdvertisingToken();
+</script>
 ```
 
 * ユーザーがログアウトしたら、1st party cookieを削除します。
-```js script
-__uid2.disconnect();
+```<html>
+<script>
+  __uid2.disconnect();
+</script>
 ```
 
 ## Configuration
