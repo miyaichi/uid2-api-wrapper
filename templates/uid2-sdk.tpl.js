@@ -80,7 +80,6 @@ class UID2 {
 
         this.connect = (email) => {
             this.base64_encoded_sha256(this.normalize_email(email)).then(email_hash => {
-                console.log("hash:" + email_hash);
                 const url = "{{ base_url }}/token/generate?email_hash=" + encodeURIComponent(email_hash);
                 const req = new XMLHttpRequest();
                 req.overrideMimeType("application/json");
