@@ -1,6 +1,7 @@
 import base64
 import boto3
 import hashlib
+import ipaddress
 import json
 import logging
 import os
@@ -8,12 +9,27 @@ import requests
 from jinja2 import Environment, FileSystemLoader
 
 
-def get_secrets(secret_name):
+def get_secrets():
+    secret_name = os.environ["secret_name"]
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager",
                             region_name=os.environ["AWS_REGION"])
     response = client.get_secret_value(SecretId=secret_name)
     return json.loads(response["SecretString"])
+
+
+def ip_check(ip):
+    if os.environ["ip_white_list"]:
+        ip = ipaddress.ip_address(ip)
+        ip_white_list = [
+            ipaddress.ip_network(x.strip())
+            for x in str(os.environ["ip_white_list"]).split(",")
+        ]
+        for network in ip_white_list:
+            if ip in network:
+                return True
+        return False
+    return True
 
 
 def normalize_email(email):
@@ -68,14 +84,10 @@ def uid2_sdk(event, context):
 
 @handler_wrapper
 def token_generate(event, context):
-    if os.environ["ip_white_list"]:
-        ip_white_list = [
-            x.strip() for x in str(os.environ["ip_white_list"]).split(",")
-        ]
-        if event["requestContext"]["identity"][
-                "sourceIp"] not in ip_white_list:
-            return {"status": "403", "statusDescription": "Forbidden"}
-    secrets = get_secrets(os.environ["secret_name"])
+    if not ip_check(event["requestContext"]["identity"]["sourceIp"]):
+        return {"status": "403", "statusDescription": "Forbidden"}
+
+    secrets = get_secrets()
     params = {}
     if event["queryStringParameters"] is not None:
         queryString = event["queryStringParameters"]
