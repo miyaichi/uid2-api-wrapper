@@ -34,6 +34,17 @@ Bearer TokenはAWS Secrets Managerに安全に保存し、IPアドレス制限�
 </script>
 ```
 
+* 必要に応じてUID2 Tokenをリフレッシュします。
+
+  <b>Note</b><br>
+  [Publisher Integration Guide](https://github.com/UnifiedID2/uid2docs/blob/main/api-ja/v1/guides/publisher-client-side.md)では、５分ごとにリフレッシュすることを推奨しています。
+
+```html
+<script>
+  __uid2.refreshIfNeeded();
+</script>
+```
+
 * ユーザーがログアウトしたら、1st party cookieを削除します。
 ```<html>
 <script>
