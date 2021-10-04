@@ -21,7 +21,7 @@ def get_secrets():
     return json.loads(response["SecretString"])
 
 
-def ip_check(ip):
+def check_ip(ip):
     """
     Check if the IP is on the whitelisted.
     """
@@ -117,7 +117,7 @@ def token_generate(event, context):
 
     Generate a UID2 token from an email address or hashed email address.
     """
-    if not ip_check(event["requestContext"]["identity"]["sourceIp"]):
+    if not check_ip(event["requestContext"]["identity"]["sourceIp"]):
         return {"status": "403", "statusDescription": "Forbidden"}
 
     secrets = get_secrets()
